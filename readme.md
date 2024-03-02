@@ -20,10 +20,17 @@ If you don't already have gcc installed, google how to install it for your Unix/
 Then `gcc -g extract.c -o extract`
 
 ## Compiling on Windows
+### Easy option
+- Download [tcc](https://www.bellard.org/tcc/)
+- extract
+- put in extractor.c in the tcc directory
+- type `tcc extract.c` in the folder, it will produce your executable
+
+### Tedious option
 Visual Studio C++ build tools are required.
 - Open VS command prompt from the start menu
 - cd to this folder
-- `cl extract.c`, extract.exe will be compiled.
+- `cl extract.c`
 
 The Python version can be packed with `pyinstaller --onefile extract.py`. The resulting exe will be 4MB.
 
