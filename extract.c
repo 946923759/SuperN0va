@@ -1,14 +1,68 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(WIN32)
+#include <windows.h>
+#else
+#include <unistd.h>
+//#include <limits.h>
+#define MAX_PATH 4096
+#endif
 
 #define BUF_SIZE (32 * 1024 * 1024)
+
+void get_output_path(const char *input_path, char *output_path, size_t size) {
+    char exe_path[MAX_PATH];
+	
+#if defined(WIN32)
+    GetModuleFileNameA(NULL, exe_path, MAX_PATH);
+
+    // Find last backslash to isolate directory
+    char *last_slash = strrchr(exe_path, '\\');
+    if (last_slash) *(last_slash + 1) = '\0';  // Truncate after last backslash
+#else
+	ssize_t len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
+
+    if (len != -1) {
+        //exe_path[len] = '\0';  // Null-terminate the path
+        //printf("Executable path (including exe) %s\n", exe_path);
+		// Find last backslash to isolate directory
+		char* last_slash = strrchr(exe_path, '/');
+		if (last_slash) *(last_slash + 1) = '\0';  // Truncate after last backslash
+		//printf("Executable path %s\n", exe_path);
+    }
+#endif
+
+    // Extract filename from input path
+    const char *filename = strrchr(input_path, '\\');
+    filename = filename ? filename + 1 : input_path;
+	//printf("%s",filename);
+	
+	snprintf(output_path, size, "%s%s", exe_path, filename);
+
+    // // Split filename and extension
+    // const char *dot = strrchr(filename, '.');
+    // size_t base_len = dot ? (size_t)(dot - filename) : strlen(filename);
+
+    // char base_name[MAX_PATH];
+    // strncpy(base_name, filename, base_len);
+    // base_name[base_len] = '\0';
+
+    // const char *ext = dot ? dot : "";
+
+    // // Construct new filename
+    // char new_filename[MAX_PATH];
+    // snprintf(new_filename, sizeof(new_filename), "%s%s", base_name, ext);
+
+    // // Combine with executable directory
+    // snprintf(output_path, size, "%s%s", exe_path, new_filename);
+}
 
 int main(int argc, char *argv[]) {
 	FILE *fptr;
 	FILE *fout;
 	char length;
-	char OutFileName[255];
+	char OutFileName[MAX_PATH];
 	size_t BytesRead;
 	unsigned char *buffer;
 	
@@ -29,10 +83,14 @@ int main(int argc, char *argv[]) {
 		  exit(1);             
 		}
 		
-		strcpy(OutFileName, argv[i]);
+		//strcpy(OutFileName, argv[i]);
+		get_output_path(argv[i], OutFileName, sizeof(OutFileName));
+		printf("%s",OutFileName);
+		//return 0;
 		
 		length = strlen(OutFileName);
 		
+		//Read 2 bytes into buffer
 		fread(buffer,sizeof(unsigned char),2,fptr);
 		
 		printf("%0x %0x\n", buffer[0], buffer[1]);
@@ -51,6 +109,7 @@ int main(int argc, char *argv[]) {
 			OutFileName[length-2] = 'n';
 			OutFileName[length-1] = 'g';
 			fout = fopen(OutFileName, "wb");
+			//Write the 2 bytes we read into fout. For mp4, the first two bytes are discarded.
 			fwrite(buffer,sizeof(unsigned char),2,fout);
 		}
 		else
@@ -60,6 +119,7 @@ int main(int argc, char *argv[]) {
 		}
 			
 		
+		//Write the rest of the file into fout.
 		for(;;)
 		{
 			BytesRead = fread(buffer, sizeof(unsigned char), BUF_SIZE, fptr);
